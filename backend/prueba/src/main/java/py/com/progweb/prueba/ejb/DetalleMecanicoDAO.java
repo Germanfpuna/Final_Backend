@@ -38,19 +38,19 @@ public class DetalleMecanicoDAO {
         }
     }
 
-    public List<DetalleMecanico> buscarPorDetalleServicio(Long detalleServicioId) {
+    public List<DetalleMecanico> buscarPorMecanicoId(Long mecanicoId) {
         TypedQuery<DetalleMecanico> query = em.createQuery(
-            "SELECT dm FROM DetalleMecanico dm WHERE dm.detalleServicio.id = :detalleServicioId", 
+            "SELECT dm FROM DetalleMecanico dm WHERE dm.mecanicoId = :mecanicoId", 
             DetalleMecanico.class);
-        query.setParameter("detalleServicioId", detalleServicioId);
+        query.setParameter("mecanicoId", mecanicoId);
         return query.getResultList();
     }
 
-    public List<DetalleMecanico> buscarPorMecanico(Long mecanicoId) {
+    public List<DetalleMecanico> buscarPorDetalleServicioId(Long detalleServicioId) {
         TypedQuery<DetalleMecanico> query = em.createQuery(
-            "SELECT dm FROM DetalleMecanico dm WHERE dm.mecanico.id = :mecanicoId", 
+            "SELECT dm FROM DetalleMecanico dm WHERE dm.detalleServicioId = :detalleServicioId", 
             DetalleMecanico.class);
-        query.setParameter("mecanicoId", mecanicoId);
+        query.setParameter("detalleServicioId", detalleServicioId);
         return query.getResultList();
     }
 }

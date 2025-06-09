@@ -1,7 +1,6 @@
 package py.com.progweb.prueba.model;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 import javax.persistence.*;
 
@@ -18,23 +17,16 @@ public class DetalleServicio {
     @Column(precision = 10, scale = 2)
     private BigDecimal costo;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "servicio_id", nullable = false)
-    private ServicioEntity servicio;
-    
-    @OneToMany(mappedBy = "detalleServicio", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<DetalleRepuesto> detalleRepuestos;
-    
-    @OneToMany(mappedBy = "detalleServicio", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<DetalleMecanico> detalleMecanicos;
+    @Column(name = "servicio_id", nullable = false)
+    private Long servicioId;
     
     // Constructors
     public DetalleServicio() {}
     
-    public DetalleServicio(String descripcion, BigDecimal costo, ServicioEntity servicio) {
+    public DetalleServicio(String descripcion, BigDecimal costo, Long servicioId) {
         this.descripcion = descripcion;
         this.costo = costo;
-        this.servicio = servicio;
+        this.servicioId = servicioId;
     }
     
     // Getters and Setters
@@ -47,12 +39,16 @@ public class DetalleServicio {
     public BigDecimal getCosto() { return costo; }
     public void setCosto(BigDecimal costo) { this.costo = costo; }
     
-    public ServicioEntity getServicio() { return servicio; }
-    public void setServicio(ServicioEntity servicio) { this.servicio = servicio; }
-    
-    public List<DetalleRepuesto> getDetalleRepuestos() { return detalleRepuestos; }
-    public void setDetalleRepuestos(List<DetalleRepuesto> detalleRepuestos) { this.detalleRepuestos = detalleRepuestos; }
-    
-    public List<DetalleMecanico> getDetalleMecanicos() { return detalleMecanicos; }
-    public void setDetalleMecanicos(List<DetalleMecanico> detalleMecanicos) { this.detalleMecanicos = detalleMecanicos; }
+    public Long getServicioId() { return servicioId; }
+    public void setServicioId(Long servicioId) { this.servicioId = servicioId; }
+
+    @Override
+    public String toString() {
+        return "DetalleServicio{" +
+                "id=" + id +
+                ", descripcion='" + descripcion + '\'' +
+                ", costo=" + costo +
+                ", servicioId=" + servicioId +
+                '}';
+    }
 }

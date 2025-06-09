@@ -6,6 +6,7 @@ import javax.ejb.Stateless;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
+import javax.persistence.NoResultException;
 import java.util.List;
 
 @Stateless
@@ -38,20 +39,25 @@ public class VehiculoDAO {
         }
     }
 
-    public List<VehiculoEntity> buscarPorCliente(Long clienteId) {
+    // Método corregido para buscar por clienteId (usando el campo clienteId, no la relación)
+    public List<VehiculoEntity> buscarPorClienteId(Long clienteId) {
         TypedQuery<VehiculoEntity> query = em.createQuery(
-            "SELECT v FROM VehiculoEntity v WHERE v.cliente.id = :clienteId", 
+            "SELECT v FROM VehiculoEntity v WHERE v.clienteId = :clienteId", 
             VehiculoEntity.class);
         query.setParameter("clienteId", clienteId);
         return query.getResultList();
     }
 
     public VehiculoEntity buscarPorChapa(String chapa) {
-        TypedQuery<VehiculoEntity> query = em.createQuery(
-            "SELECT v FROM VehiculoEntity v WHERE v.chapa = :chapa", 
-            VehiculoEntity.class);
-        query.setParameter("chapa", chapa);
-        return query.getSingleResult();
+        try {
+            TypedQuery<VehiculoEntity> query = em.createQuery(
+                "SELECT v FROM VehiculoEntity v WHERE v.chapa = :chapa", 
+                VehiculoEntity.class);
+            query.setParameter("chapa", chapa);
+            return query.getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        }
     }
 
     public List<VehiculoEntity> buscarPorMarca(String marca) {
@@ -60,5 +66,11 @@ public class VehiculoDAO {
             VehiculoEntity.class);
         query.setParameter("marca", "%" + marca + "%");
         return query.getResultList();
+    }
+
+    // Método legacy para compatibilidad (usar clienteId en su lugar)
+    @Deprecated
+    public List<VehiculoEntity> buscarPorCliente(Long clienteId) {
+        return buscarPorClienteId(clienteId);
     }
 }

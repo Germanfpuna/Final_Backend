@@ -1,8 +1,7 @@
 package py.com.progweb.prueba.model;
 
-
 import javax.persistence.*;
-import java.util.List;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "repuestos")
@@ -11,21 +10,37 @@ public class RepuestoEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50, unique = true)
     private String codigo;
     
     @Column(nullable = false, length = 100)
     private String nombre;
     
-    @OneToMany(mappedBy = "repuesto", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<DetalleRepuesto> detalleRepuestos;
+    @Column(length = 200)
+    private String descripcion;
+    
+    @Column(precision = 10, scale = 2)
+    private BigDecimal precio;
+    
+    @Column(name = "stock_actual")
+    private Integer stockActual;
+    
+    @Column(name = "stock_minimo")
+    private Integer stockMinimo;
+    
+    // Remove the @OneToMany collection entirely since you're using ID-based relationships
+    // If you need to get DetalleRepuesto records, use DetalleRepuestoDAO.buscarPorRepuestoId(id)
     
     // Constructors
     public RepuestoEntity() {}
     
-    public RepuestoEntity(String codigo, String nombre) {
+    public RepuestoEntity(String codigo, String nombre, String descripcion, BigDecimal precio, Integer stockActual, Integer stockMinimo) {
         this.codigo = codigo;
         this.nombre = nombre;
+        this.descripcion = descripcion;
+        this.precio = precio;
+        this.stockActual = stockActual;
+        this.stockMinimo = stockMinimo;
     }
     
     // Getters and Setters
@@ -38,6 +53,28 @@ public class RepuestoEntity {
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
     
-    public List<DetalleRepuesto> getDetalleRepuestos() { return detalleRepuestos; }
-    public void setDetalleRepuestos(List<DetalleRepuesto> detalleRepuestos) { this.detalleRepuestos = detalleRepuestos; }
+    public String getDescripcion() { return descripcion; }
+    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+    
+    public BigDecimal getPrecio() { return precio; }
+    public void setPrecio(BigDecimal precio) { this.precio = precio; }
+    
+    public Integer getStockActual() { return stockActual; }
+    public void setStockActual(Integer stockActual) { this.stockActual = stockActual; }
+    
+    public Integer getStockMinimo() { return stockMinimo; }
+    public void setStockMinimo(Integer stockMinimo) { this.stockMinimo = stockMinimo; }
+
+    @Override
+    public String toString() {
+        return "RepuestoEntity{" +
+                "id=" + id +
+                ", codigo='" + codigo + '\'' +
+                ", nombre='" + nombre + '\'' +
+                ", descripcion='" + descripcion + '\'' +
+                ", precio=" + precio +
+                ", stockActual=" + stockActual +
+                ", stockMinimo=" + stockMinimo +
+                '}';
+    }
 }

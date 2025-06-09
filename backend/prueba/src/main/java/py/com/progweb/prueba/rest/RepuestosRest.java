@@ -63,9 +63,24 @@ public class RepuestosRest {
                 return Response.status(Response.Status.NOT_FOUND).build();
             }
             
-            if (repuesto.getCodigo() != null) existente.setCodigo(repuesto.getCodigo());
-            if (repuesto.getNombre() != null) existente.setNombre(repuesto.getNombre());
-            
+            if (repuesto.getCodigo() != null) {
+                existente.setCodigo(repuesto.getCodigo());
+            }
+            if (repuesto.getNombre() != null) {
+                existente.setNombre(repuesto.getNombre());
+            }
+            if (repuesto.getDescripcion() != null) {
+                existente.setDescripcion(repuesto.getDescripcion());
+            }
+            if (repuesto.getPrecio() != null) {
+                existente.setPrecio(repuesto.getPrecio());
+            }
+            if (repuesto.getStockActual() != null) {
+                existente.setStockActual(repuesto.getStockActual());
+            }
+            if (repuesto.getStockMinimo() != null) {
+                existente.setStockMinimo(repuesto.getStockMinimo());
+            }
             repuestoDAO.actualizar(existente);
             return Response.ok(existente).build();
         } catch (Exception e) {

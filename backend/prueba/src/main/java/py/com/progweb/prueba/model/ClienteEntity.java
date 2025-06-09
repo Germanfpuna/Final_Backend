@@ -1,8 +1,6 @@
 package py.com.progweb.prueba.model;
 
-
 import javax.persistence.*;
-import java.util.List;
 
 @Entity
 @Table(name = "clientes")
@@ -20,15 +18,12 @@ public class ClienteEntity {
     @Column(length = 200)
     private String direccion;
     
-    @Column(name = "ruc_ci", length = 20)
+    @Column(name = "ruc_ci", length = 20, unique = true)
     private String rucCi;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_cliente")
     private TipoCliente tipoCliente;
-    
-    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<VehiculoEntity> vehiculos;
     
     // Constructors
     public ClienteEntity() {}
@@ -59,9 +54,18 @@ public class ClienteEntity {
     
     public TipoCliente getTipoCliente() { return tipoCliente; }
     public void setTipoCliente(TipoCliente tipoCliente) { this.tipoCliente = tipoCliente; }
-    
-    public List<VehiculoEntity> getVehiculos() { return vehiculos; }
-    public void setVehiculos(List<VehiculoEntity> vehiculos) { this.vehiculos = vehiculos; }
+
+    @Override
+    public String toString() {
+        return "ClienteEntity{" +
+                "id=" + id +
+                ", nombre='" + nombre + '\'' +
+                ", telefono='" + telefono + '\'' +
+                ", direccion='" + direccion + '\'' +
+                ", rucCi='" + rucCi + '\'' +
+                ", tipoCliente=" + tipoCliente +
+                '}';
+    }
 }
 
 enum TipoCliente {

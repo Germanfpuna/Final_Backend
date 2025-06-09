@@ -1,8 +1,13 @@
 package py.com.progweb.prueba.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
+
 import javax.persistence.*;
 import java.time.LocalDate;
-import java.util.List;
 
 @Entity
 @Table(name = "mecanicos")
@@ -21,13 +26,16 @@ public class MecanicoEntity {
     private String telefono;
     
     @Column(name = "fecha_ingreso")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    @JsonDeserialize(using = LocalDateDeserializer.class)
+    @JsonSerialize(using = LocalDateSerializer.class)
     private LocalDate fechaIngreso;
     
     @Column(length = 100)
     private String especialidad;
     
-    @OneToMany(mappedBy = "mecanico", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<DetalleMecanico> detalleMecanicos;
+    // Remove the @OneToMany collection entirely since you're using ID-based relationships
+    // If you need to get DetalleMecanico records, use DetalleMecanicoDAO.buscarPorMecanicoId(id)
     
     // Constructors
     public MecanicoEntity() {}
@@ -58,7 +66,16 @@ public class MecanicoEntity {
     
     public String getEspecialidad() { return especialidad; }
     public void setEspecialidad(String especialidad) { this.especialidad = especialidad; }
-    
-    public List<DetalleMecanico> getDetalleMecanicos() { return detalleMecanicos; }
-    public void setDetalleMecanicos(List<DetalleMecanico> detalleMecanicos) { this.detalleMecanicos = detalleMecanicos; }
+
+    @Override
+    public String toString() {
+        return "MecanicoEntity{" +
+                "id=" + id +
+                ", nombre='" + nombre + '\'' +
+                ", direccion='" + direccion + '\'' +
+                ", telefono='" + telefono + '\'' +
+                ", fechaIngreso=" + fechaIngreso +
+                ", especialidad='" + especialidad + '\'' +
+                '}';
+    }
 }

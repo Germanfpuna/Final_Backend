@@ -1,9 +1,14 @@
 package py.com.progweb.prueba.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
+
 import javax.persistence.*;
 import java.time.LocalDate;
 import java.math.BigDecimal;
-import java.util.List;
 
 @Entity
 @Table(name = "servicios")
@@ -13,6 +18,9 @@ public class ServicioEntity {
     private Long id;
     
     @Column(nullable = false)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    @JsonDeserialize(using = LocalDateDeserializer.class)
+    @JsonSerialize(using = LocalDateSerializer.class)
     private LocalDate fecha;
     
     @Column(length = 500)
@@ -24,22 +32,19 @@ public class ServicioEntity {
     @Column(name = "costo_total", precision = 10, scale = 2)
     private BigDecimal costoTotal;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "vehiculo_id", nullable = false)
-    private VehiculoEntity vehiculo;
-    
-    @OneToMany(mappedBy = "servicio", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<DetalleServicio> detalleServicios;
+    // Solo guardar el ID del vehículo
+    @Column(name = "vehiculo_id", nullable = false)
+    private Long vehiculoId;
     
     // Constructors
     public ServicioEntity() {}
     
-    public ServicioEntity(LocalDate fecha, String descripcion, Integer kmActual, BigDecimal costoTotal, VehiculoEntity vehiculo) {
+    public ServicioEntity(LocalDate fecha, String descripcion, Integer kmActual, BigDecimal costoTotal, Long vehiculoId) {
         this.fecha = fecha;
         this.descripcion = descripcion;
         this.kmActual = kmActual;
         this.costoTotal = costoTotal;
-        this.vehiculo = vehiculo;
+        this.vehiculoId = vehiculoId;
     }
     
     // Getters and Setters
@@ -58,9 +63,20 @@ public class ServicioEntity {
     public BigDecimal getCostoTotal() { return costoTotal; }
     public void setCostoTotal(BigDecimal costoTotal) { this.costoTotal = costoTotal; }
     
-    public VehiculoEntity getVehiculo() { return vehiculo; }
-    public void setVehiculo(VehiculoEntity vehiculo) { this.vehiculo = vehiculo; }
-    
-    public List<DetalleServicio> getDetalleServicios() { return detalleServicios; }
-    public void setDetalleServicios(List<DetalleServicio> detalleServicios) { this.detalleServicios = detalleServicios; }
+    public Long getVehiculoId() { return vehiculoId; }
+    public void setVehiculoId(Long vehiculoId) { 
+        this.vehiculoId = vehiculoId;
+    }
+
+    @Override
+    public String toString() {
+        return "ServicioEntity{" +
+                "id=" + id +
+                ", fecha=" + fecha +
+                ", descripcion='" + descripcion + '\'' +
+                ", kmActual=" + kmActual +
+                ", costoTotal=" + costoTotal +
+                ", vehiculoId=" + vehiculoId +
+                '}';
+    }
 }

@@ -38,11 +38,34 @@ public class DetalleServicioDAO {
         }
     }
 
-    public List<DetalleServicio> buscarPorServicio(Long servicioId) {
+    // Método actualizado para usar servicioId
+    public List<DetalleServicio> buscarPorServicioId(Long servicioId) {
         TypedQuery<DetalleServicio> query = em.createQuery(
-            "SELECT ds FROM DetalleServicio ds WHERE ds.servicio.id = :servicioId", 
+            "SELECT ds FROM DetalleServicio ds WHERE ds.servicioId = :servicioId", 
             DetalleServicio.class);
         query.setParameter("servicioId", servicioId);
         return query.getResultList();
+    }
+
+    // Método legacy para compatibilidad
+    @Deprecated
+    public List<DetalleServicio> buscarPorServicio(Long servicioId) {
+        return buscarPorServicioId(servicioId);
+    }
+
+    public List<DetalleServicio> buscarPorDescripcion(String descripcion) {
+        TypedQuery<DetalleServicio> query = em.createQuery(
+            "SELECT ds FROM DetalleServicio ds WHERE LOWER(ds.descripcion) LIKE LOWER(:descripcion)", 
+            DetalleServicio.class);
+        query.setParameter("descripcion", "%" + descripcion + "%");
+        return query.getResultList();
+    }
+
+    public Long contarDetallesPorServicio(Long servicioId) {
+        TypedQuery<Long> query = em.createQuery(
+            "SELECT COUNT(ds) FROM DetalleServicio ds WHERE ds.servicioId = :servicioId", 
+            Long.class);
+        query.setParameter("servicioId", servicioId);
+        return query.getSingleResult();
     }
 }

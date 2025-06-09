@@ -38,19 +38,19 @@ public class DetalleRepuestoDAO {
         }
     }
 
-    public List<DetalleRepuesto> buscarPorDetalleServicio(Long detalleServicioId) {
+    public List<DetalleRepuesto> buscarPorRepuestoId(Long repuestoId) {
         TypedQuery<DetalleRepuesto> query = em.createQuery(
-            "SELECT dr FROM DetalleRepuesto dr WHERE dr.detalleServicio.id = :detalleServicioId", 
+            "SELECT dr FROM DetalleRepuesto dr WHERE dr.repuestoId = :repuestoId", 
             DetalleRepuesto.class);
-        query.setParameter("detalleServicioId", detalleServicioId);
+        query.setParameter("repuestoId", repuestoId);
         return query.getResultList();
     }
 
-    public List<DetalleRepuesto> buscarPorRepuesto(Long repuestoId) {
+    public List<DetalleRepuesto> buscarPorDetalleServicioId(Long detalleServicioId) {
         TypedQuery<DetalleRepuesto> query = em.createQuery(
-            "SELECT dr FROM DetalleRepuesto dr WHERE dr.repuesto.id = :repuestoId", 
+            "SELECT dr FROM DetalleRepuesto dr WHERE dr.detalleServicioId = :detalleServicioId", 
             DetalleRepuesto.class);
-        query.setParameter("repuestoId", repuestoId);
+        query.setParameter("detalleServicioId", detalleServicioId);
         return query.getResultList();
     }
 }
