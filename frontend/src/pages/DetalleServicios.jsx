@@ -13,7 +13,11 @@ import {
   serviciosAPI, 
   detalleServiciosAPI, 
   detalleMecanicosAPI, 
-  detalleRepuestosAPI 
+  detalleRepuestosAPI,
+  vehiculosAPI,
+  clientesAPI,
+  mecanicosAPI,
+  repuestosAPI
 } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorAlert from '../components/ErrorAlert';
@@ -24,6 +28,8 @@ const DetalleServicio = () => {
   const [error, setError] = useState('');
   
   const [servicio, setServicio] = useState(null);
+  const [vehiculo, setVehiculo] = useState(null);
+  const [cliente, setCliente] = useState(null);
   const [detallesServicio, setDetallesServicio] = useState([]);
   const [detalleMecanicos, setDetalleMecanicos] = useState([]);
   const [detalleRepuestos, setDetalleRepuestos] = useState([]);
@@ -39,7 +45,29 @@ const DetalleServicio = () => {
 
       // Cargar servicio principal
       const servicioResponse = await serviciosAPI.getById(id);
-      setServicio(servicioResponse.data);
+      const servicioData = servicioResponse.data;
+      setServicio(servicioData);
+
+      // Cargar vehículo usando vehiculoId
+      if (servicioData.vehiculoId) {
+        try {
+          const vehiculoResponse = await vehiculosAPI.getById(servicioData.vehiculoId);
+          const vehiculoData = vehiculoResponse.data;
+          setVehiculo(vehiculoData);
+
+          // Cargar cliente usando clienteId del vehículo
+          if (vehiculoData.clienteId) {
+            try {
+              const clienteResponse = await clientesAPI.getById(vehiculoData.clienteId);
+              setCliente(clienteResponse.data);
+            } catch (err) {
+              console.log('Error cargando cliente:', err);
+            }
+          }
+        } catch (err) {
+          console.log('Error cargando vehículo:', err);
+        }
+      }
 
       // Cargar detalles del servicio
       const detallesResponse = await detalleServiciosAPI.getByServicio(id);
@@ -51,9 +79,18 @@ const DetalleServicio = () => {
 
       for (const detalle of detallesResponse.data) {
         try {
-          // Cargar mecánicos para este detalle
-          const mecanicosResponse = await detalleMecanicosAPI.getByMecanico(detalle.id);
-          if (mecanicosResponse.data) {
+          // Cargar mecánicos para este detalle usando detalle_servicio_id
+          const mecanicosResponse = await detalleMecanicosAPI.getByDetalleServicio(detalle.id);
+          if (mecanicosResponse.data && Array.isArray(mecanicosResponse.data)) {
+            // Enriquecer con información del mecánico
+            for (const detalleMecanico of mecanicosResponse.data) {
+              try {
+                const mecanicoResponse = await mecanicosAPI.getById(detalleMecanico.mecanicoId);
+                detalleMecanico.mecanico = mecanicoResponse.data;
+              } catch (err) {
+                console.log('Error cargando mecánico:', detalleMecanico.mecanicoId);
+              }
+            }
             todosMecanicos.push(...mecanicosResponse.data);
           }
         } catch (err) {
@@ -61,9 +98,17 @@ const DetalleServicio = () => {
         }
 
         try {
-          // Cargar repuestos para este detalle
           const repuestosResponse = await detalleRepuestosAPI.getByDetalleServicio(detalle.id);
-          if (repuestosResponse.data) {
+          if (repuestosResponse.data && Array.isArray(repuestosResponse.data)) {
+            
+            for (const detalleRepuesto of repuestosResponse.data) {
+              try {
+                const repuestoResponse = await repuestosAPI.getById(detalleRepuesto.repuestoId);
+                detalleRepuesto.repuesto = repuestoResponse.data;
+              } catch (err) {
+                console.log('Error cargando repuesto:', detalleRepuesto.repuestoId);
+              }
+            }
             todosRepuestos.push(...repuestosResponse.data);
           }
         } catch (err) {
@@ -210,33 +255,33 @@ const DetalleServicio = () => {
                 <tbody>
                   <tr>
                     <td><strong>Cliente:</strong></td>
-                    <td>{servicio.cliente?.nombre || 'N/A'}</td>
+                    <td>{cliente?.nombre || 'Cargando...'}</td>
                   </tr>
                   <tr>
                     <td><strong>RUC/CI:</strong></td>
-                    <td>{servicio.cliente?.rucCi || 'N/A'}</td>
+                    <td>{cliente?.rucCi || 'N/A'}</td>
                   </tr>
                   <tr>
                     <td><strong>Teléfono:</strong></td>
-                    <td>📞 {servicio.cliente?.telefono || 'N/A'}</td>
+                    <td>📞 {cliente?.telefono || 'N/A'}</td>
                   </tr>
                   <tr>
                     <td><strong>Dirección:</strong></td>
-                    <td>📍 {servicio.cliente?.direccion || 'N/A'}</td>
+                    <td>📍 {cliente?.direccion || 'N/A'}</td>
                   </tr>
                   <tr>
                     <td><strong>Vehículo:</strong></td>
                     <td>
-                      {servicio.vehiculo ? (
+                      {vehiculo ? (
                         <div>
-                          <strong>🚗 {servicio.vehiculo.chapa}</strong>
+                          <strong>🚗 {vehiculo.chapa}</strong>
                           <br />
                           <small>
-                            {servicio.vehiculo.marca} {servicio.vehiculo.modelo} 
-                            ({servicio.vehiculo.anio}) - {servicio.vehiculo.tipo}
+                            {vehiculo.marca} {vehiculo.modelo} 
+                            ({vehiculo.anio}) - {vehiculo.tipo}
                           </small>
                         </div>
-                      ) : 'N/A'}
+                      ) : 'Cargando...'}
                     </td>
                   </tr>
                 </tbody>

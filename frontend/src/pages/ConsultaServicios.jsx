@@ -10,12 +10,13 @@ import {
   InputGroup
 } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { serviciosAPI, clientesAPI } from '../services/api';
+import { serviciosAPI, clientesAPI, vehiculosAPI } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorAlert from '../components/ErrorAlert';
 
 const ConsultaServicios = () => {
   const [servicios, setServicios] = useState([]);
+  const [serviciosEnriquecidos, setServiciosEnriquecidos] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,12 +42,53 @@ const ConsultaServicios = () => {
         clientesAPI.getAll()
       ]);
       
-      setServicios(serviciosRes.data);
+      const serviciosData = serviciosRes.data;
+      setServicios(serviciosData);
       setClientes(clientesRes.data);
+      
+      // Enriquecer servicios con información de cliente y vehículo
+      await enriquecerServicios(serviciosData);
+      
     } catch (error) {
       setError('Error al cargar datos: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const enriquecerServicios = async (serviciosData) => {
+    try {
+      const serviciosConDetalles = await Promise.all(
+        serviciosData.map(async (servicio) => {
+          try {
+            // Obtener información del vehículo
+            const vehiculoResponse = await vehiculosAPI.getById(servicio.vehiculoId);
+            const vehiculo = vehiculoResponse.data;
+            
+            // Obtener información del cliente
+            const clienteResponse = await clientesAPI.getById(vehiculo.clienteId);
+            const cliente = clienteResponse.data;
+            
+            return {
+              ...servicio,
+              vehiculo: vehiculo,
+              cliente: cliente
+            };
+          } catch (err) {
+            console.log(`Error cargando detalles para servicio ${servicio.id}:`, err);
+            return {
+              ...servicio,
+              vehiculo: null,
+              cliente: null
+            };
+          }
+        })
+      );
+      
+      setServiciosEnriquecidos(serviciosConDetalles);
+    } catch (error) {
+      console.error('Error enriqueciendo servicios:', error);
+      setServiciosEnriquecidos(serviciosData);
     }
   };
 
@@ -58,35 +100,49 @@ const ConsultaServicios = () => {
       let serviciosFiltrados = [];
       
       if (filtros.clienteId) {
-        const response = await serviciosAPI.getByCliente(filtros.clienteId);
-        serviciosFiltrados = response.data;
-      } else if (filtros.vehiculoId) {
-        const response = await serviciosAPI.getByVehiculo(filtros.vehiculoId);
-        serviciosFiltrados = response.data;
-      } else if (filtros.fechaInicio && filtros.fechaFin) {
-        const response = await serviciosAPI.getByFecha(filtros.fechaInicio, filtros.fechaFin);
-        serviciosFiltrados = response.data;
-      } else {
-        const response = await serviciosAPI.getAll();
-        serviciosFiltrados = response.data;
-      }
-      
-      // Filtro de búsqueda general
-      if (filtros.searchTerm) {
-        const term = filtros.searchTerm.toLowerCase();
-        serviciosFiltrados = serviciosFiltrados.filter(servicio => 
-          servicio.descripcion?.toLowerCase().includes(term) ||
-          servicio.vehiculo?.chapa?.toLowerCase().includes(term) ||
-          servicio.cliente?.nombre?.toLowerCase().includes(term)
+        // Filtrar por cliente - necesitamos obtener los vehículos del cliente primero
+        const vehiculosResponse = await vehiculosAPI.buscarPorCliente(filtros.clienteId);
+        const vehiculosCliente = vehiculosResponse.data;
+        const vehiculoIds = vehiculosCliente.map(v => v.id);
+        
+        serviciosFiltrados = servicios.filter(servicio => 
+          vehiculoIds.includes(servicio.vehiculoId)
         );
+      } else if (filtros.vehiculoId) {
+        serviciosFiltrados = servicios.filter(servicio => 
+          servicio.vehiculoId === parseInt(filtros.vehiculoId)
+        );
+      } else if (filtros.fechaInicio && filtros.fechaFin) {
+        const fechaInicio = new Date(filtros.fechaInicio);
+        const fechaFin = new Date(filtros.fechaFin);
+        
+        serviciosFiltrados = servicios.filter(servicio => {
+          const fechaServicio = new Date(servicio.fecha);
+          return fechaServicio >= fechaInicio && fechaServicio <= fechaFin;
+        });
+      } else {
+        serviciosFiltrados = [...servicios];
       }
       
-      setServicios(serviciosFiltrados);
+      // Enriquecer los servicios filtrados
+      await enriquecerServicios(serviciosFiltrados);
+      
     } catch (error) {
       setError('Error al aplicar filtros: ' + error.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const filtrarPorBusqueda = (serviciosParaFiltrar) => {
+    if (!filtros.searchTerm) return serviciosParaFiltrar;
+    
+    const term = filtros.searchTerm.toLowerCase();
+    return serviciosParaFiltrar.filter(servicio => 
+      servicio.descripcion?.toLowerCase().includes(term) ||
+      servicio.vehiculo?.chapa?.toLowerCase().includes(term) ||
+      servicio.cliente?.nombre?.toLowerCase().includes(term)
+    );
   };
 
   const limpiarFiltros = () => {
@@ -114,12 +170,15 @@ const ConsultaServicios = () => {
     return 'success';
   };
 
+  // Aplicar filtro de búsqueda en tiempo real
+  const serviciosMostrados = filtrarPorBusqueda(serviciosEnriquecidos);
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>🔍 Consulta de Servicios</h2>
+        <h2>Consulta de Servicios</h2>
         <Button as={Link} to="/registro-servicio" variant="primary">
-          ➕ Nuevo Servicio
+          Nuevo Servicio
         </Button>
       </div>
       
@@ -128,7 +187,7 @@ const ConsultaServicios = () => {
       {/* Filtros */}
       <Card className="mb-4">
         <Card.Header>
-          <h5 className="mb-0">🔎 Filtros de Búsqueda</h5>
+          <h5 className="mb-0">Filtros de Búsqueda</h5>
         </Card.Header>
         <Card.Body>
           <Row>
@@ -142,8 +201,8 @@ const ConsultaServicios = () => {
                     value={filtros.searchTerm}
                     onChange={(e) => setFiltros(prev => ({...prev, searchTerm: e.target.value}))}
                   />
-                  <Button variant="outline-secondary" onClick={aplicarFiltros}>
-                    🔍
+                  <Button variant="outline-secondary" disabled>
+                    Buscar
                   </Button>
                 </InputGroup>
               </Form.Group>
@@ -195,12 +254,12 @@ const ConsultaServicios = () => {
                 </>
               ) : (
                 <>
-                  🔍 Buscar
+                  Buscar
                 </>
               )}
             </Button>
             <Button variant="outline-secondary" onClick={limpiarFiltros}>
-              🔄 Limpiar
+              Limpiar
             </Button>
           </div>
         </Card.Body>
@@ -210,26 +269,29 @@ const ConsultaServicios = () => {
       <Card>
         <Card.Header className="d-flex justify-content-between align-items-center">
           <h5 className="mb-0">
-            📊 Servicios Encontrados ({servicios.length})
+            Servicios Encontrados ({serviciosMostrados.length})
           </h5>
           <div>
             <small className="text-muted">
-              Total: {formatearMoneda(servicios.reduce((sum, s) => sum + parseFloat(s.costoTotal || 0), 0))}
+              Total: {formatearMoneda(serviciosMostrados.reduce((sum, s) => sum + parseFloat(s.costoTotal || 0), 0))}
             </small>
           </div>
         </Card.Header>
         <Card.Body>
           {loading ? (
-            <LoadingSpinner message="Buscando servicios..." />
-          ) : servicios.length === 0 ? (
+            <LoadingSpinner message="Cargando servicios..." />
+          ) : serviciosMostrados.length === 0 ? (
             <div className="text-center py-4">
-              <div className="mb-3" style={{ fontSize: '4rem' }}>🔍</div>
+              <div className="mb-3" style={{ fontSize: '4rem' }}>📋</div>
               <h5>No se encontraron servicios</h5>
               <p className="text-muted">
-                No hay servicios que coincidan con los filtros aplicados.
+                {filtros.searchTerm || filtros.clienteId || filtros.fechaInicio ?
+                  'No hay servicios que coincidan con los filtros aplicados.' :
+                  'No hay servicios registrados en el sistema.'
+                }
               </p>
               <Button variant="primary" as={Link} to="/registro-servicio">
-                ➕ Registrar Primer Servicio
+                Registrar Primer Servicio
               </Button>
             </div>
           ) : (
@@ -248,7 +310,7 @@ const ConsultaServicios = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {servicios.map(servicio => (
+                  {serviciosMostrados.map(servicio => (
                     <tr key={servicio.id}>
                       <td>
                         <Badge bg="secondary">#{servicio.id}</Badge>
@@ -256,17 +318,17 @@ const ConsultaServicios = () => {
                       <td>{formatearFecha(servicio.fecha)}</td>
                       <td>
                         <div>
-                          <strong>{servicio.cliente?.nombre || 'N/A'}</strong>
+                          <strong>{servicio.cliente?.nombre || 'Cargando...'}</strong>
                           {servicio.cliente?.telefono && (
                             <small className="d-block text-muted">
-                              📞 {servicio.cliente.telefono}
+                              Tel: {servicio.cliente.telefono}
                             </small>
                           )}
                         </div>
                       </td>
                       <td>
                         <div>
-                          <strong>🚗 {servicio.vehiculo?.chapa || 'N/A'}</strong>
+                          <strong>{servicio.vehiculo?.chapa || 'Cargando...'}</strong>
                           {servicio.vehiculo && (
                             <small className="d-block text-muted">
                               {servicio.vehiculo.marca} {servicio.vehiculo.modelo}
@@ -285,7 +347,7 @@ const ConsultaServicios = () => {
                       </td>
                       <td>
                         {servicio.kmActual ? (
-                          <span>🛣️ {servicio.kmActual.toLocaleString()} km</span>
+                          <span>{servicio.kmActual.toLocaleString()} km</span>
                         ) : (
                           <span className="text-muted">N/A</span>
                         )}
@@ -304,15 +366,7 @@ const ConsultaServicios = () => {
                             size="sm"
                             title="Ver detalles"
                           >
-                            👁️
-                          </Button>
-                          <Button 
-                            variant="outline-secondary" 
-                            size="sm"
-                            title="Imprimir"
-                            onClick={() => window.print()}
-                          >
-                            🖨️
+                            Ver
                           </Button>
                         </div>
                       </td>

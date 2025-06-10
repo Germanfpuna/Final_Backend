@@ -92,7 +92,7 @@ const RegistroServicio = () => {
     const handleClienteChange = async (clienteId) => {
         if (clienteId) {
             try {
-                const response = await vehiculosAPI.getByCliente(clienteId);
+                const response = await vehiculosAPI.buscarPorCliente(clienteId);
                 setVehiculos(response.data);
                 setServicio(prev => ({ ...prev, vehiculoId: '' }));
             } catch (error) {
@@ -103,6 +103,42 @@ const RegistroServicio = () => {
             setVehiculos([]);
             setServicio(prev => ({ ...prev, vehiculoId: '' }));
         }
+    };
+
+    // Función para calcular stock disponible considerando repuestos ya agregados - FIXED
+    const calcularStockDisponible = (repuestoId) => {
+        const repuesto = repuestos.find(r => r.id == repuestoId);
+        if (!repuesto) return 0;
+
+        // Usar stockActual en lugar de stock
+        const stockInicial = repuesto.stockActual || 0;
+
+        // Calcular cantidad ya utilizada en todos los detalles
+        let cantidadUtilizada = 0;
+        
+        // Sumar repuestos en detalles ya guardados
+        detalles.forEach(detalle => {
+            detalle.repuestos.forEach(rep => {
+                if (rep.repuestoId == repuestoId) {
+                    cantidadUtilizada += parseInt(rep.cantidad);
+                }
+            });
+        });
+
+        // Sumar repuestos en el detalle actual
+        currentDetalle.repuestos.forEach(rep => {
+            if (rep.repuestoId == repuestoId) {
+                cantidadUtilizada += parseInt(rep.cantidad);
+            }
+        });
+
+        return Math.max(0, stockInicial - cantidadUtilizada);
+    };
+
+    // Función para validar si se puede agregar la cantidad solicitada
+    const validarStockRepuesto = (repuestoId, cantidadSolicitada) => {
+        const stockDisponible = calcularStockDisponible(repuestoId);
+        return parseInt(cantidadSolicitada) <= stockDisponible;
     };
 
     const calcularCostoTotal = () => {
@@ -141,6 +177,13 @@ const RegistroServicio = () => {
 
     const agregarRepuesto = () => {
         if (repuestoDetalle.repuestoId && repuestoDetalle.cantidad) {
+            // Validar stock disponible
+            if (!validarStockRepuesto(repuestoDetalle.repuestoId, repuestoDetalle.cantidad)) {
+                const stockDisponible = calcularStockDisponible(repuestoDetalle.repuestoId);
+                setError(`Stock insuficiente. Solo hay ${stockDisponible} unidades disponibles de este repuesto.`);
+                return;
+            }
+
             const repuesto = repuestos.find(r => r.id == repuestoDetalle.repuestoId);
             const precioUnitario = repuestoDetalle.precioUnitario || repuesto?.precio || 0;
             const precioTotal = parseFloat(repuestoDetalle.cantidad) * parseFloat(precioUnitario);
@@ -166,6 +209,7 @@ const RegistroServicio = () => {
                 repuestoId: ''
             });
             setShowRepuestoModal(false);
+            setError(''); // Limpiar errores previos
         }
     };
 
@@ -186,9 +230,62 @@ const RegistroServicio = () => {
         setDetalles(prev => prev.filter((_, i) => i !== index));
     };
 
+    // Función para actualizar el stock de repuestos - FIXED
+    const actualizarStockRepuestos = async () => {
+        const actualizaciones = new Map();
+
+        // Recopilar todas las cantidades de repuestos utilizados
+        detalles.forEach(detalle => {
+            detalle.repuestos.forEach(repuesto => {
+                const repuestoId = repuesto.repuestoId;
+                const cantidad = parseInt(repuesto.cantidad);
+                
+                if (actualizaciones.has(repuestoId)) {
+                    actualizaciones.set(repuestoId, actualizaciones.get(repuestoId) + cantidad);
+                } else {
+                    actualizaciones.set(repuestoId, cantidad);
+                }
+            });
+        });
+
+        // Actualizar stock de cada repuesto
+        for (const [repuestoId, cantidadUtilizada] of actualizaciones) {
+            try {
+                const repuesto = repuestos.find(r => r.id == repuestoId);
+                if (repuesto) {
+                    // Usar stockActual en lugar de stock
+                    const nuevoStock = (repuesto.stockActual || 0) - cantidadUtilizada;
+                    
+                    // Validación final de stock
+                    if (nuevoStock < 0) {
+                        throw new Error(`Stock insuficiente para el repuesto ${repuesto.nombre}. Stock actual: ${repuesto.stockActual}, cantidad solicitada: ${cantidadUtilizada}`);
+                    }
+
+                    const repuestoActualizado = {
+                        ...repuesto,
+                        stockActual: nuevoStock
+                    };
+
+                    await repuestosAPI.update(repuestoId, repuestoActualizado);
+                    console.log(`Stock actualizado para ${repuesto.nombre}: ${repuesto.stockActual} -> ${nuevoStock}`);
+                }
+            } catch (error) {
+                console.error(`Error actualizando stock del repuesto ${repuestoId}:`, error);
+                throw error;
+            }
+        }
+    };
+
     const guardarServicio = async () => {
         if (!servicio.vehiculoId || !servicio.descripcion || detalles.length === 0) {
             setError('Por favor complete todos los campos obligatorios y agregue al menos un detalle');
+            return;
+        }
+
+        // Validación final de stock antes de guardar
+        const validacionStock = validarStockFinal();
+        if (!validacionStock.valido) {
+            setError(validacionStock.mensaje);
             return;
         }
 
@@ -246,7 +343,14 @@ const RegistroServicio = () => {
                 }
             }
 
-            setSuccess('Servicio registrado exitosamente');
+            // Actualizar stock de repuestos
+            await actualizarStockRepuestos();
+
+            // Recargar datos de repuestos para mostrar stock actualizado
+            const repuestosResponse = await repuestosAPI.getAll();
+            setRepuestos(repuestosResponse.data);
+
+            setSuccess('Servicio registrado exitosamente. Stock de repuestos actualizado.');
 
             // Limpiar formulario
             setServicio({
@@ -266,13 +370,45 @@ const RegistroServicio = () => {
         }
     };
 
+    // Función para validación final del stock - FIXED
+    const validarStockFinal = () => {
+        const utilizacion = new Map();
+        
+        // Calcular total de repuestos utilizados
+        detalles.forEach(detalle => {
+            detalle.repuestos.forEach(repuesto => {
+                const repuestoId = repuesto.repuestoId;
+                const cantidad = parseInt(repuesto.cantidad);
+                
+                if (utilizacion.has(repuestoId)) {
+                    utilizacion.set(repuestoId, utilizacion.get(repuestoId) + cantidad);
+                } else {
+                    utilizacion.set(repuestoId, cantidad);
+                }
+            });
+        });
+
+        // Validar cada repuesto
+        for (const [repuestoId, cantidadTotal] of utilizacion) {
+            const repuesto = repuestos.find(r => r.id == repuestoId);
+            if (!repuesto || (repuesto.stockActual || 0) < cantidadTotal) {
+                return {
+                    valido: false,
+                    mensaje: `Stock insuficiente para ${repuesto?.nombre || 'repuesto desconocido'}. Stock disponible: ${repuesto?.stockActual || 0}, cantidad requerida: ${cantidadTotal}`
+                };
+            }
+        }
+
+        return { valido: true, mensaje: '' };
+    };
+
     if (loading && clientes.length === 0) {
         return <LoadingSpinner message="Cargando datos iniciales..." />;
     }
 
     return (
         <div>
-            <h2>📝 Registro de Servicios</h2>
+            <h2>🔧 Registro de Servicios</h2>
 
             {error && <ErrorAlert message={error} onClose={() => setError('')} />}
             {success && (
@@ -283,7 +419,7 @@ const RegistroServicio = () => {
 
             <Card className="mb-4">
                 <Card.Header>
-                    <h5>Información del Servicio</h5>
+                    <h5>📋 Información del Servicio</h5>
                 </Card.Header>
                 <Card.Body>
                     <Row>
@@ -371,7 +507,7 @@ const RegistroServicio = () => {
 
             <Card className="mb-4">
                 <Card.Header className="d-flex justify-content-between align-items-center">
-                    <h5>Detalles del Servicio</h5>
+                    <h5>🔧 Detalles del Servicio</h5>
                     <Button variant="primary" onClick={() => setShowDetalleModal(true)}>
                         ➕ Agregar Detalle
                     </Button>
@@ -440,7 +576,7 @@ const RegistroServicio = () => {
 
             <div className="d-flex justify-content-end gap-2">
                 <Button variant="secondary">
-                    Cancelar
+                    ❌ Cancelar
                 </Button>
                 <Button
                     variant="success"
@@ -464,7 +600,7 @@ const RegistroServicio = () => {
             {/* Modal para agregar detalle */}
             <Modal show={showDetalleModal} onHide={() => setShowDetalleModal(false)} size="lg">
                 <Modal.Header closeButton>
-                    <Modal.Title>Agregar Detalle de Servicio</Modal.Title>
+                    <Modal.Title>➕ Agregar Detalle de Servicio</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     <Form.Group className="mb-3">
@@ -491,7 +627,7 @@ const RegistroServicio = () => {
                     <Row>
                         <Col md={6}>
                             <div className="d-flex justify-content-between align-items-center mb-2">
-                                <h6>Mecánicos Asignados</h6>
+                                <h6>👨‍🔧 Mecánicos Asignados</h6>
                                 <Button variant="outline-primary" size="sm" onClick={() => setShowMecanicoModal(true)}>
                                     ➕ Agregar
                                 </Button>
@@ -516,7 +652,7 @@ const RegistroServicio = () => {
                                                     mecanicos: prev.mecanicos.filter((_, i) => i !== index)
                                                 }))}
                                             >
-                                                ✕
+                                                ❌
                                             </Button>
                                         </div>
                                     </div>
@@ -525,7 +661,7 @@ const RegistroServicio = () => {
                         </Col>
                         <Col md={6}>
                             <div className="d-flex justify-content-between align-items-center mb-2">
-                                <h6>Repuestos Utilizados</h6>
+                                <h6>🔩 Repuestos Utilizados</h6>
                                 <Button variant="outline-primary" size="sm" onClick={() => setShowRepuestoModal(true)}>
                                     ➕ Agregar
                                 </Button>
@@ -551,7 +687,7 @@ const RegistroServicio = () => {
                                                     repuestos: prev.repuestos.filter((_, i) => i !== index)
                                                 }))}
                                             >
-                                                ✕
+                                                ❌
                                             </Button>
                                         </div>
                                     </div>
@@ -569,7 +705,7 @@ const RegistroServicio = () => {
                         onClick={agregarDetalle}
                         disabled={!currentDetalle.descripcion || !currentDetalle.costo}
                     >
-                        Agregar Detalle
+                        ➕ Agregar Detalle
                     </Button>
                 </Modal.Footer>
             </Modal>
@@ -577,7 +713,7 @@ const RegistroServicio = () => {
             {/* Modal para agregar mecánico */}
             <Modal show={showMecanicoModal} onHide={() => setShowMecanicoModal(false)}>
                 <Modal.Header closeButton>
-                    <Modal.Title>Agregar Mecánico</Modal.Title>
+                    <Modal.Title>👨‍🔧 Agregar Mecánico</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     <Form.Group className="mb-3">
@@ -636,15 +772,15 @@ const RegistroServicio = () => {
                         onClick={agregarMecanico}
                         disabled={!mecanicoDetalle.mecanicoId || !mecanicoDetalle.costoTotal}
                     >
-                        Agregar Mecánico
+                        ➕ Agregar Mecánico
                     </Button>
                 </Modal.Footer>
             </Modal>
 
-            {/* Modal para agregar repuesto */}
+            {/* Modal para agregar repuesto - FIXED */}
             <Modal show={showRepuestoModal} onHide={() => setShowRepuestoModal(false)}>
                 <Modal.Header closeButton>
-                    <Modal.Title>Agregar Repuesto</Modal.Title>
+                    <Modal.Title>🔩 Agregar Repuesto</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     <Form.Group className="mb-3">
@@ -661,12 +797,27 @@ const RegistroServicio = () => {
                             }}
                         >
                             <option value="">Seleccione un repuesto</option>
-                            {repuestos.map(repuesto => (
-                                <option key={repuesto.id} value={repuesto.id}>
-                                    {repuesto.codigo} - {repuesto.nombre} (₲{parseFloat(repuesto.precio || 0).toLocaleString()})
-                                </option>
-                            ))}
+                            {repuestos.map(repuesto => {
+                                const stockDisponible = calcularStockDisponible(repuesto.id);
+                                return (
+                                    <option 
+                                        key={repuesto.id} 
+                                        value={repuesto.id}
+                                        disabled={stockDisponible <= 0}
+                                    >
+                                        {repuesto.codigo} - {repuesto.nombre} 
+                                        (₲{parseFloat(repuesto.precio || 0).toLocaleString()}) 
+                                        - Stock: {stockDisponible}
+                                        {stockDisponible <= 0 ? ' (AGOTADO)' : ''}
+                                    </option>
+                                );
+                            })}
                         </Form.Select>
+                        {repuestoDetalle.repuestoId && (
+                            <small className="text-muted">
+                                Stock disponible: {calcularStockDisponible(repuestoDetalle.repuestoId)} unidades
+                            </small>
+                        )}
                     </Form.Group>
 
                     <Row>
@@ -675,10 +826,18 @@ const RegistroServicio = () => {
                                 <Form.Label>Cantidad *</Form.Label>
                                 <Form.Control
                                     type="number"
+                                    min="1"
+                                    max={repuestoDetalle.repuestoId ? calcularStockDisponible(repuestoDetalle.repuestoId) : ''}
                                     value={repuestoDetalle.cantidad}
                                     onChange={(e) => setRepuestoDetalle(prev => ({ ...prev, cantidad: e.target.value }))}
                                     placeholder="Cantidad"
                                 />
+                                {repuestoDetalle.repuestoId && repuestoDetalle.cantidad && 
+                                 parseInt(repuestoDetalle.cantidad) > calcularStockDisponible(repuestoDetalle.repuestoId) && (
+                                    <small className="text-danger">
+                                        Cantidad excede el stock disponible
+                                    </small>
+                                )}
                             </Form.Group>
                         </Col>
                         <Col md={6}>
@@ -722,9 +881,14 @@ const RegistroServicio = () => {
                     <Button
                         variant="primary"
                         onClick={agregarRepuesto}
-                        disabled={!repuestoDetalle.repuestoId || !repuestoDetalle.cantidad}
+                        disabled={
+                            !repuestoDetalle.repuestoId || 
+                            !repuestoDetalle.cantidad ||
+                            parseInt(repuestoDetalle.cantidad) > calcularStockDisponible(repuestoDetalle.repuestoId) ||
+                            parseInt(repuestoDetalle.cantidad) <= 0
+                        }
                     >
-                        Agregar Repuesto
+                        ➕ Agregar Repuesto
                     </Button>
                 </Modal.Footer>
             </Modal>
@@ -732,4 +896,4 @@ const RegistroServicio = () => {
     );
 };
 
-export default RegistroServicio; 
+export default RegistroServicio;

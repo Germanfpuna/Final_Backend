@@ -117,7 +117,7 @@ const GestionClientes = () => {
 
   const getTipoBadge = (tipo) => {
     switch (tipo) {
-      case 'premium': return 'warning';
+      case 'ocasional': return 'warning';
       case 'vip': return 'danger';
       default: return 'secondary';
     }
@@ -301,7 +301,7 @@ const GestionClientes = () => {
                     }))}
                   >
                     <option value="regular">Regular</option>
-                    <option value="premium">Premium</option>
+                    <option value="ocasional">Ocasional</option>
                     <option value="vip">VIP</option>
                   </Form.Select>
                 </Form.Group>

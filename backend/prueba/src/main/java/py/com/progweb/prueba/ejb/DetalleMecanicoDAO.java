@@ -6,6 +6,7 @@ import javax.ejb.Stateless;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
+import java.util.ArrayList;
 import java.util.List;
 
 @Stateless
@@ -47,10 +48,16 @@ public class DetalleMecanicoDAO {
     }
 
     public List<DetalleMecanico> buscarPorDetalleServicioId(Long detalleServicioId) {
-        TypedQuery<DetalleMecanico> query = em.createQuery(
-            "SELECT dm FROM DetalleMecanico dm WHERE dm.detalleServicioId = :detalleServicioId", 
-            DetalleMecanico.class);
-        query.setParameter("detalleServicioId", detalleServicioId);
-        return query.getResultList();
+        try {
+            return em.createQuery(
+                "SELECT dm FROM DetalleMecanico dm WHERE dm.detalleServicioId = :detalleServicioId", 
+                DetalleMecanico.class)
+                .setParameter("detalleServicioId", detalleServicioId)
+                .getResultList();
+        } catch (Exception e) {
+            System.out.println("Error al buscar por detalle servicio ID: " + e.getMessage());
+            List<DetalleMecanico> emptyList = new ArrayList<DetalleMecanico>();
+            return emptyList;
+        }
     }
 }

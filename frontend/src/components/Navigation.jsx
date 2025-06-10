@@ -9,7 +9,7 @@ const Navigation = () => {
     <Navbar bg="dark" variant="dark" expand="lg">
       <Container>
         <Navbar.Brand as={Link} to="/">
-          🔧 Taller Mecánico
+          Taller Mecánico
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
@@ -37,16 +37,16 @@ const Navigation = () => {
             </Nav.Link>
             <NavDropdown title="Gestión" id="basic-nav-dropdown">
               <NavDropdown.Item as={Link} to="/clientes">
-                👥 Clientes
+                Clientes
               </NavDropdown.Item>
               <NavDropdown.Item as={Link} to="/vehiculos">
-                🚗 Vehículos
+                Vehículos
               </NavDropdown.Item>
               <NavDropdown.Item as={Link} to="/mecanicos">
-                🔧 Mecánicos
+                Mecánicos
               </NavDropdown.Item>
               <NavDropdown.Item as={Link} to="/repuestos">
-                🔩 Repuestos
+                Repuestos
               </NavDropdown.Item>
             </NavDropdown>
           </Nav>

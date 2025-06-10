@@ -81,8 +81,13 @@ export const detalleServiciosAPI = {
 // Detalle Mecánicos API
 export const detalleMecanicosAPI = {
   getAll: () => api.get('/detalle-mecanicos'),
+  getById: (id) => api.get(`/detalle-mecanicos/${id}`),
   create: (detalle) => api.post('/detalle-mecanicos', detalle),
-  getByMecanico: (mecanicoId) => api.get(`/detalle-mecanicos/mecanico/${mecanicoId}`)
+  update: (id, detalle) => api.put(`/detalle-mecanicos/${id}`, detalle),
+  delete: (id) => api.delete(`/detalle-mecanicos/${id}`),
+  getByMecanico: (mecanicoId) => api.get(`/detalle-mecanicos/mecanico/${mecanicoId}`),
+  getByServicio: (servicioId) => api.get(`/detalle-mecanicos/servicio/${servicioId}`),
+  getByDetalleServicio: (detalleServicioId) => api.get(`/detalle-mecanicos/detalle-servicio/${detalleServicioId}`)
 };
 
 // Detalle Repuestos API
@@ -92,9 +97,8 @@ export const detalleRepuestosAPI = {
   create: (detalle) => api.post('/detalle-repuestos', detalle),
   update: (id, detalle) => api.put(`/detalle-repuestos/${id}`, detalle),
   delete: (id) => api.delete(`/detalle-repuestos/${id}`),
-  getByRepuesto: (repuestoId) => api.get(`/detalle-repuestos/repuesto/${repuestoId}`),
-  getByDetalleServicio: (detalleServicioId) => api.get(`/detalle-repuestos/detalle-servicio/${detalleServicioId}`),
-  getCompleto: (id) => api.get(`/detalle-repuestos/${id}/completo`)
+  getByServicio: (servicioId) => api.get(`/detalle-repuestos/servicio/${servicioId}`),
+  getByDetalleServicio: (detalleServicioId) => api.get(`/detalle-repuestos/detalle-servicio/${detalleServicioId}`)
 };
 
 export default api;

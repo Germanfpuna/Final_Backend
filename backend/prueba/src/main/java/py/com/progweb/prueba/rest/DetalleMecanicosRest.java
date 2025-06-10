@@ -3,15 +3,18 @@ package py.com.progweb.prueba.rest;
 import py.com.progweb.prueba.ejb.DetalleMecanicoDAO;
 import py.com.progweb.prueba.ejb.MecanicoDAO;
 import py.com.progweb.prueba.ejb.DetalleServicioDAO;
+import py.com.progweb.prueba.ejb.ServicioDAO;
 import py.com.progweb.prueba.model.DetalleMecanico;
 import py.com.progweb.prueba.model.MecanicoEntity;
 import py.com.progweb.prueba.model.DetalleServicio;
+import py.com.progweb.prueba.model.ServicioEntity;
 
 import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.List;
+import java.util.ArrayList;
 
 @Path("/detalle-mecanicos")
 @Produces(MediaType.APPLICATION_JSON)
@@ -27,6 +30,9 @@ public class DetalleMecanicosRest {
     @Inject
     private DetalleServicioDAO detalleServicioDAO;
 
+    @Inject
+    private ServicioDAO servicioDAO;
+
     @GET
     public Response listar() {
         try {
@@ -35,6 +41,22 @@ public class DetalleMecanicosRest {
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("Error al obtener detalles de mecánico: " + e.getMessage()).build();
+        }
+    }
+
+    @GET
+    @Path("/{id}")
+    public Response buscarPorId(@PathParam("id") Long id) {
+        try {
+            DetalleMecanico detalle = detalleMecanicoDAO.buscarPorId(id);
+            if (detalle == null) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("Detalle de mecánico no encontrado").build();
+            }
+            return Response.ok(detalle).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Error al buscar detalle: " + e.getMessage()).build();
         }
     }
 
@@ -74,6 +96,43 @@ public class DetalleMecanicosRest {
         }
     }
 
+    @PUT
+    @Path("/{id}")
+    public Response actualizar(@PathParam("id") Long id, DetalleMecanico detalleMecanico) {
+        try {
+            DetalleMecanico existente = detalleMecanicoDAO.buscarPorId(id);
+            if (existente == null) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("Detalle de mecánico no encontrado").build();
+            }
+
+            detalleMecanico.setId(id);
+            detalleMecanicoDAO.actualizar(detalleMecanico);
+            return Response.ok(detalleMecanico).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Error al actualizar detalle: " + e.getMessage()).build();
+        }
+    }
+
+    @DELETE
+    @Path("/{id}")
+    public Response eliminar(@PathParam("id") Long id) {
+        try {
+            DetalleMecanico detalle = detalleMecanicoDAO.buscarPorId(id);
+            if (detalle == null) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("Detalle de mecánico no encontrado").build();
+            }
+
+            detalleMecanicoDAO.eliminar(id);
+            return Response.ok().entity("Detalle eliminado exitosamente").build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Error al eliminar detalle: " + e.getMessage()).build();
+        }
+    }
+
     @GET
     @Path("/mecanico/{mecanicoId}")
     public Response buscarPorMecanico(@PathParam("mecanicoId") Long mecanicoId) {
@@ -83,6 +142,47 @@ public class DetalleMecanicosRest {
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("Error al buscar detalles: " + e.getMessage()).build();
+        }
+    }
+
+    @GET
+    @Path("/servicio/{servicioId}")
+    public Response buscarPorServicio(@PathParam("servicioId") Long servicioId) {
+        try {
+            // Verificar que el servicio existe
+            ServicioEntity servicio = servicioDAO.buscarPorId(servicioId);
+            if (servicio == null) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity("Servicio no encontrado").build();
+            }
+
+            // Obtener todos los detalles de servicio para este servicio
+            List<DetalleServicio> detallesServicio = detalleServicioDAO.buscarPorServicioId(servicioId);
+            
+            List<DetalleMecanico> todosMecanicos = new ArrayList<>();
+            
+            // Para cada detalle de servicio, obtener los mecánicos asignados
+            for (DetalleServicio detalleServicio : detallesServicio) {
+                List<DetalleMecanico> mecanicosPorDetalle = detalleMecanicoDAO.buscarPorDetalleServicioId(detalleServicio.getId());
+                todosMecanicos.addAll(mecanicosPorDetalle);
+            }
+
+            return Response.ok(todosMecanicos).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Error al buscar mecánicos por servicio: " + e.getMessage()).build();
+        }
+    }
+
+    @GET
+    @Path("/detalle-servicio/{detalleServicioId}")
+    public Response buscarPorDetalleServicio(@PathParam("detalleServicioId") Long detalleServicioId) {
+        try {
+            List<DetalleMecanico> detalles = detalleMecanicoDAO.buscarPorDetalleServicioId(detalleServicioId);
+            return Response.ok(detalles).build();
+        } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Error al buscar detalles por detalle servicio: " + e.getMessage()).build();
         }
     }
 }
