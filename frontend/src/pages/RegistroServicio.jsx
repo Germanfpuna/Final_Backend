@@ -92,7 +92,7 @@ const RegistroServicio = () => {
     const handleClienteChange = async (clienteId) => {
         if (clienteId) {
             try {
-                const response = await vehiculosAPI.buscarPorCliente(clienteId);
+                const response = await vehiculosAPI.getByCliente(clienteId);
                 setVehiculos(response.data);
                 setServicio(prev => ({ ...prev, vehiculoId: '' }));
             } catch (error) {

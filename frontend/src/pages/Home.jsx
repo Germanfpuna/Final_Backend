@@ -84,39 +84,6 @@ const Home = () => {
         </Col>
       </Row>
 
-      <Row className="mt-4">
-        <Col>
-          <Card>
-            <Card.Header>
-              <h5>Accesos Rápidos</h5>
-            </Card.Header>
-            <Card.Body>
-              <Row>
-                <Col md={3}>
-                  <Button as={Link} to="/clientes" variant="outline-primary" className="w-100 mb-2">
-                    👥 Clientes
-                  </Button>
-                </Col>
-                <Col md={3}>
-                  <Button as={Link} to="/vehiculos" variant="outline-primary" className="w-100 mb-2">
-                    🚗 Vehículos
-                  </Button>
-                </Col>
-                <Col md={3}>
-                  <Button as={Link} to="/mecanicos" variant="outline-primary" className="w-100 mb-2">
-                    🔧 Mecánicos
-                  </Button>
-                </Col>
-                <Col md={3}>
-                  <Button as={Link} to="/repuestos" variant="outline-primary" className="w-100 mb-2">
-                    🔩 Repuestos
-                  </Button>
-                </Col>
-              </Row>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
     </div>
   );
 };

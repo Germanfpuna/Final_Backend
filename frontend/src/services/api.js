@@ -21,7 +21,7 @@ export const clientesAPI = {
 };
 
 // Vehículos API
-export const vehiculosAPI = {
+export const  vehiculosAPI = {
   getAll: () => api.get('/vehiculos'),
   getById: (id) => api.get(`/vehiculos/${id}`),
   create: (vehiculo) => api.post('/vehiculos', vehiculo),
